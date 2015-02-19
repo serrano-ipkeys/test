@@ -43,7 +43,7 @@ function adc_setup()
 	echo BB-ADC > $slots
 }
 
-function adcraw()
+function adc_raw()
 {
 	case $1 in
 		[0-3]) ;;
@@ -165,11 +165,19 @@ function din_setup()
 	echo $din1 > $gpio/export
 	echo $din2 > $gpio/export
 	echo $din3 > $gpio/export
+	echo $din4 > $gpio/export
+	echo $din5 > $gpio/export
+	echo $din6 > $gpio/export
+	echo $din7 > $gpio/export
 
 	echo in > $gpio/gpio$din0/direction
 	echo in > $gpio/gpio$din1/direction
 	echo in > $gpio/gpio$din2/direction
 	echo in > $gpio/gpio$din3/direction
+	echo in > $gpio/gpio$din4/direction
+	echo in > $gpio/gpio$din5/direction
+	echo in > $gpio/gpio$din6/direction
+	echo in > $gpio/gpio$din7/direction
 }
 
 function din()
@@ -179,7 +187,11 @@ function din()
 		1) d=$din1;;
 		2) d=$din2;;
 		3) d=$din3;;
-        *) echo "invalid din number. Must be 0-3"; return 1;;
+		4) d=$din4;;
+		5) d=$din5;;
+		6) d=$din6;;
+		7) d=$din7;;
+        *) echo "invalid din number. Must be 0-7"; return 1;;
 	esac
 
 	cat $gpio/gpio$d/value
@@ -239,6 +251,37 @@ function led()
 	echo $val > $gpio/gpio$d/value
 }
 
+#
+# pinmux
+#
+function mux_reg()
+{
+	base=0x44e10800
+
+	# takes 1 argument = mux pin number
+	if [ -z $1 ]; then
+		echo $base
+		return
+	fi
+
+	reg=$((base+($1*4)))
+	echo $reg
+}
+
+function mux_addr()
+{
+	# takes 1 argument = mux pin number (default = 0)
+	reg_addr=`mux_reg $1`
+	printf "%X\n" $reg_addr
+}
+
+function mux_peek()
+{
+	# takes 1 argument = mux pin number (default = 0)
+	reg_addr=`mux_reg $1`
+	reg_addr=`printf "%X" $reg_addr`
+	cat $pins | grep -i $reg_addr
+}
 
 #
 # setup everything
@@ -261,6 +304,7 @@ function rbhelp()
 	echo "  relay_setup       --- setup relay outputs"
 	echo "  dout_setup        --- setup digital outputs"
 	echo "  din_setup         --- setup digital inputs"
+	echo "  led_setup         --- setup led outputs"
     echo ""
 	echo "  din <n>           --- read din n           - example: din 1             reads din1"
 	echo "  dout <n> {1|0}    --- set dout n to 0 or 1 - example: dout 3 0          sets dout3 = 0"
@@ -269,6 +313,9 @@ function rbhelp()
 	echo "  toggle_led <n>    --- toggle led n         - example: toggle_led 0      toggles led0"
 	echo "  toggle_relay <n>  --- toggle relay n       - example: toggle_relay 1    toggles relay1"
 	echo "  adc <n>           --- read ADC n           - example: adc 0             reads ADC0"
-	echo "  adcraw <n>        --- read ADC n raw       - example: adcraw 0          reads ADC0 raw"
+	echo "  adc_raw <n>       --- read ADC n raw       - example: adcraw 0          reads ADC0 raw"
+	echo ""
+	echo "  mux_addr <n>      --- mux pin n register address, n=0-141"
+	echo "  mux_peeK <n>      --- mux pin n register value,   n=0-141"
 	echo ""
 }

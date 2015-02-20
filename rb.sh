@@ -275,10 +275,20 @@ function mux_addr()
 	printf "%X\n" $reg_addr
 }
 
-function mux_peek()
+function mux_peek_pin()
 {
 	# takes 1 argument = mux pin number (default = 0)
 	reg_addr=`mux_reg $1`
+	reg_addr=`printf "%X" $reg_addr`
+	cat $pins | grep -i $reg_addr
+}
+
+function mux_peek_off()
+{
+	# takes 1 argument = mux pin reg offset (hex) from mux ctrl base (default = 0)
+	pin=`echo "ibase=16; $1" | bc`
+	pin=$(($pin/4))
+	reg_addr=`mux_reg $pin`
 	reg_addr=`printf "%X" $reg_addr`
 	cat $pins | grep -i $reg_addr
 }
@@ -316,6 +326,7 @@ function rbhelp()
 	echo "  adc_raw <n>       --- read ADC n raw       - example: adcraw 0          reads ADC0 raw"
 	echo ""
 	echo "  mux_addr <n>      --- mux pin n register address, n=0-141"
-	echo "  mux_peeK <n>      --- mux pin n register value,   n=0-141"
+	echo "  mux_peek_pin <n>  --- mux pin n register value,   n=0-141"
+	echo "  mux_peek_off <offset>  --- mux pin reg offset (hex) from mux ctrl base,   n=0-234"
 	echo ""
 }

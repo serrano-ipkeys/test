@@ -293,6 +293,17 @@ function mux_peek_off()
 	cat $pins | grep -i $reg_addr
 }
 
+function rtc_setup()
+{
+	ntpdate -b -s -u pool.ntp.org
+	hwclock -w
+}
+
+function date_pt()
+{
+	TZ='America/Los_Angeles' date
+}
+
 #
 # setup everything
 #
@@ -309,12 +320,13 @@ function rbhelp()
 {
 	echo ""
 	echo "IP Keys Relay Board commands:"
-	echo "  rb_setup          --- setup all relay board I/O"
+	echo "  rb_setup          --- setup all relay board I/O (not rtc)"
 	echo "  adc_setup         --- setup ADC input"
 	echo "  relay_setup       --- setup relay outputs"
 	echo "  dout_setup        --- setup digital outputs"
 	echo "  din_setup         --- setup digital inputs"
 	echo "  led_setup         --- setup led outputs"
+	echo "  rtc_setup         --- setup rtc"
     echo ""
 	echo "  din <n>           --- read din n           - example: din 1             reads din1"
 	echo "  dout <n> {1|0}    --- set dout n to 0 or 1 - example: dout 3 0          sets dout3 = 0"
@@ -328,5 +340,7 @@ function rbhelp()
 	echo "  mux_addr <n>      --- mux pin n register address, n=0-141"
 	echo "  mux_peek_pin <n>  --- mux pin n register value,   n=0-141"
 	echo "  mux_peek_off <offset>  --- mux pin reg offset (hex) from mux ctrl base,   n=0-234"
+	echo ""
+	echo "  date_pt            --- display date/time in U.S. Pacific timezone "
 	echo ""
 }

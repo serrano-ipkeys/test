@@ -207,10 +207,10 @@ function led_setup()
 	echo $led2 > $gpio/export
 	echo $led3 > $gpio/export
 
-	echo out > $gpio/gpio$led0/direction
-	echo out > $gpio/gpio$led1/direction
-	echo out > $gpio/gpio$led2/direction
-	echo out > $gpio/gpio$led3/direction
+	#echo out > $gpio/gpio$led0/direction
+	#echo out > $gpio/gpio$led1/direction
+	#echo out > $gpio/gpio$led2/direction
+	#echo out > $gpio/gpio$led3/direction
 }
 
 function toggle_led()
@@ -249,6 +249,26 @@ function led()
 	esac
 
 	echo $val > $gpio/gpio$d/value
+}
+
+function usr()
+{
+	case $1 in
+		[0-3]) ;;
+            *) echo "invalid led number. Must be 0-3"; return 1;;
+	esac
+
+	usr_led=usr$1
+	if [ $2 == "stop" ]; then
+		echo none > /sys/class/leds/beaglebone:green:$usr_led/trigger
+	else
+		case $1 in
+			0) echo heartbeat > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
+			1) echo mmc0 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
+			2) echo cpu0 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
+			3) echo mmc1 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
+		esac
+	fi
 }
 
 #
@@ -316,6 +336,27 @@ function rb_setup()
 	led_setup
 }
 
+function update_flash()
+{
+	if [ ! -e is_sd_card ]; then
+		echo not on sdcard!!
+		return
+	fi
+
+	./mkcard.sh /dev/mmcblk1
+	mkdir /mnt/boot
+	mkdir /mnt/root
+	mount -t vfat /dev/mmcblk1p1 /mnt/boot
+	mount /dev/mmcblk1p2 /mnt/root
+	cp u-boot.img /mnt/boot
+	cp MLO /mnt/boot
+	tar -xvf Cloud9-IDE-GNOME-beaglebone.tar.xz -C /mnt/root
+	sync
+	cp rb.sh /mnt/root/home/root/
+	umount /mnt/boot
+	umount /mnt/root
+}
+
 function rbhelp()
 {
 	echo ""
@@ -330,6 +371,7 @@ function rbhelp()
     echo ""
 	echo "  din <n>           --- read din n           - example: din 1             reads din1"
 	echo "  dout <n> {1|0}    --- set dout n to 0 or 1 - example: dout 3 0          sets dout3 = 0"
+	echo "  usr <n> {start|stop} --- enable/disable normal function for usr led  <n> - ex: usr 0 stop"
 	echo "  led <n> {1|0}     --- set led n to 0 or 1  - example: led 2 1           turns led2 on"
 	echo "  toggle_dout <n>   --- toggle dout n        - example: toggle_dout 1     toggles dout1"
 	echo "  toggle_led <n>    --- toggle led n         - example: toggle_led 0      toggles led0"
@@ -343,4 +385,5 @@ function rbhelp()
 	echo ""
 	echo "  date_pt            --- display date/time in U.S. Pacific timezone "
 	echo ""
+	echo " update_flash        --- update firmware on internal flash - all existing files on flash are erased!"
 }

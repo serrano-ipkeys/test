@@ -1,0 +1,10 @@
+Create bootable sd card, boot into linux. Then:
+
+scp rb.sh root@<target_ip>:/home/root
+scp mkcard.sh root@<target_ip>:/home/root
+scp is_sd_card root@<target_ip>:/home/root
+cd ..setup-scripts/deploy/eglibc/images/beaglebone
+scp MLO root@<target_ip>:/home/root
+scp u-boot.img root@<target_ip>:/home/root
+scp Cloud9-IDE-GNOME-beaglebone.tar.xz root@<target_ip>:/home/root
+

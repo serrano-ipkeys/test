@@ -8,6 +8,7 @@ export pins=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
 export raw=/sys/devices/ocp.3/44e0d000.tscadc/tiadc/iio:device0
 export adin=/sys/devices/ocp.3/helper*
 export gpio=/sys/class/gpio
+export leds=/sys/class/leds/beaglebone:green:usr
 
 # gpio pin numbers for Relay Board I/O
 # GPIOn_m pin number = n*32 + m
@@ -30,10 +31,10 @@ export din5=45
 export din6=46
 export din7=47
 
-export led0=86
-export led1=87
-export led2=88
-export led3=89
+#export led0=86
+#export led1=87
+#export led2=88
+#export led3=89
 
 #
 # A/D Converters
@@ -200,46 +201,78 @@ function din()
 #
 # LEDs
 #
-function led_setup()
-{
-	echo $led0 > $gpio/export
-	echo $led1 > $gpio/export
-	echo $led2 > $gpio/export
-	echo $led3 > $gpio/export
+#function led_setup()
+#{
+#	echo $led0 > $gpio/export
+#	echo $led1 > $gpio/export
+#	echo $led2 > $gpio/export
+#	echo $led3 > $gpio/export
+#
+#	echo out > $gpio/gpio$led0/direction
+#	echo out > $gpio/gpio$led1/direction
+#	echo out > $gpio/gpio$led2/direction
+#	echo out > $gpio/gpio$led3/direction
+#}
 
-	#echo out > $gpio/gpio$led0/direction
-	#echo out > $gpio/gpio$led1/direction
-	#echo out > $gpio/gpio$led2/direction
-	#echo out > $gpio/gpio$led3/direction
-}
+#function toggle_led()
+#{
+#	case $1 in
+#		0) led=$led0;;
+#		1) led=$led1;;
+#		2) led=$led2;;
+#		3) led=$led3;;
+#        *) echo "invalid led number. Must be 0-3"; return 1;;
+#	esac
+#
+#	val=`cat $gpio/gpio$led/value`
+#	case $val in
+#		0) val=1;;
+#		1) val=0;;
+#	esac
+#
+#	echo $val > $gpio/gpio$led/value
+#
+#}
+#
+#function led()
+#{
+#	case $1 in
+#		0) d=$led0;;
+#		1) d=$led1;;
+#		2) d=$led2;;
+#		3) d=$led3;;
+#        *) echo "invalid led number. Must be 0-3"; return 1;;
+#	esac
+#
+#	case $2 in
+#		0) val=0;;
+#		*) val=1;;
+#	esac
+#
+#	echo $val > $gpio/gpio$d/value
+#}
 
 function toggle_led()
 {
 	case $1 in
-		0) led=$led0;;
-		1) led=$led1;;
-		2) led=$led2;;
-		3) led=$led3;;
+		[0-3]) ;;
         *) echo "invalid led number. Must be 0-3"; return 1;;
 	esac
 
-	val=`cat $gpio/gpio$led/value`
+	val=`cat $leds$1/brightness`
 	case $val in
 		0) val=1;;
-		1) val=0;;
+		*) val=0;;
 	esac
 
-	echo $val > $gpio/gpio$led/value
+	echo $val > $leds$1/brightness
 
 }
 
 function led()
 {
 	case $1 in
-		0) d=$led0;;
-		1) d=$led1;;
-		2) d=$led2;;
-		3) d=$led3;;
+		[0-3]) ;;
         *) echo "invalid led number. Must be 0-3"; return 1;;
 	esac
 
@@ -248,27 +281,33 @@ function led()
 		*) val=1;;
 	esac
 
-	echo $val > $gpio/gpio$d/value
+	echo $val > $leds$1/brightness
 }
 
-function usr()
+function led_fcn()
 {
-	case $1 in
+	case "$1" in
 		[0-3]) ;;
             *) echo "invalid led number. Must be 0-3"; return 1;;
 	esac
 
-	usr_led=usr$1
-	if [ $2 == "stop" ]; then
-		echo none > /sys/class/leds/beaglebone:green:$usr_led/trigger
-	else
-		case $1 in
-			0) echo heartbeat > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
-			1) echo mmc0 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
-			2) echo cpu0 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
-			3) echo mmc1 > /sys/class/leds/beaglebone:green:$usr_led/trigger;;
-		esac
+	if [ "$2" == "" ]; then
+		cat $leds$1/trigger
+		return
 	fi
+
+	if [ "$2" == "std" ]; then
+		case $1 in
+			0) echo heartbeat > $leds$1/trigger;;
+			1) echo mmc0 > $leds$1/trigger;;
+			2) echo cpu0 > $leds$1/trigger;;
+			3) echo mmc1 > $leds$1/trigger;;
+		esac
+
+		return
+	fi
+
+	echo $2 > $leds$1/trigger
 }
 
 #
@@ -333,27 +372,48 @@ function rb_setup()
 	relay_setup
 	dout_setup
 	din_setup
-	led_setup
+	#led_setup
 }
 
 function update_flash()
 {
-	if [ ! -e is_sd_card ]; then
-		echo not on sdcard!!
+	echo "This destroys all existing data on /dev/mmcblk1!"
+	echo "Are you sure [y]?"
+	read ans
+
+	if [ "$ans" != "y" ]; then
+		echo aborting
 		return
 	fi
+
+	echo "creating partitions on /dev/mmcblk1"
 
 	./mkcard.sh /dev/mmcblk1
 	mkdir /mnt/boot
 	mkdir /mnt/root
 	mount -t vfat /dev/mmcblk1p1 /mnt/boot
 	mount /dev/mmcblk1p2 /mnt/root
+
+	echo "updating firmware"
+
 	cp u-boot.img /mnt/boot
 	cp MLO /mnt/boot
 	tar -xvf Cloud9-IDE-GNOME-beaglebone.tar.xz -C /mnt/root
 	sync
-	cp rb.sh /mnt/root/home/root/
 	umount /mnt/boot
+	umount /mnt/root
+
+	echo "copying installation files"
+	# copy the original update files so the onboard flash can 
+	# make bootable sd cards
+	mount /dev/mmcblk1p2 /mnt/root
+	cp README.md  /mnt/root/home/root/
+	cp rb.sh      /mnt/root/home/root/
+	cp mkcard.sh  /mnt/root/home/root/
+	cp u-boot.img /mnt/root/home/root/
+	cp MLO        /mnt/root/home/root/
+	cp Cloud9-IDE-GNOME-beaglebone.tar.xz /mnt/root/home/root/
+	sync
 	umount /mnt/root
 }
 
@@ -366,18 +426,20 @@ function rbhelp()
 	echo "  relay_setup       --- setup relay outputs"
 	echo "  dout_setup        --- setup digital outputs"
 	echo "  din_setup         --- setup digital inputs"
-	echo "  led_setup         --- setup led outputs"
+	#echo "  led_setup         --- setup led outputs"
 	echo "  rtc_setup         --- setup rtc"
     echo ""
-	echo "  din <n>           --- read din n           - example: din 1             reads din1"
-	echo "  dout <n> {1|0}    --- set dout n to 0 or 1 - example: dout 3 0          sets dout3 = 0"
-	echo "  usr <n> {start|stop} --- enable/disable normal function for usr led  <n> - ex: usr 0 stop"
-	echo "  led <n> {1|0}     --- set led n to 0 or 1  - example: led 2 1           turns led2 on"
-	echo "  toggle_dout <n>   --- toggle dout n        - example: toggle_dout 1     toggles dout1"
-	echo "  toggle_led <n>    --- toggle led n         - example: toggle_led 0      toggles led0"
-	echo "  toggle_relay <n>  --- toggle relay n       - example: toggle_relay 1    toggles relay1"
-	echo "  adc <n>           --- read ADC n           - example: adc 0             reads ADC0"
-	echo "  adc_raw <n>       --- read ADC n raw       - example: adcraw 0          reads ADC0 raw"
+	echo "  din <n>           --- read din n             - example: din 1             reads din1"
+	echo "  dout <n> {1|0}    --- set dout n to 0 or 1   - example: dout 3 0          sets dout3 = 0"
+	echo "  led_fcn <n> [{std|<fcn>}] --- led n function - example: led_fcn 0 none    stops normal led 0 function"
+	echo "                                                          led_fcn 0 std     resumes normal led 0 function"
+	echo "                                                          led_fcn 0         displays led 0 function list"
+	echo "  led <n> {1|0}     --- set led n to 0 or 1    - example: led 2 1           turns led2 on"
+	echo "  toggle_dout <n>   --- toggle dout n          - example: toggle_dout 1     toggles dout1"
+	echo "  toggle_led <n>    --- toggle led n           - example: toggle_led 0      toggles led0"
+	echo "  toggle_relay <n>  --- toggle relay n         - example: toggle_relay 1    toggles relay1"
+	echo "  adc <n>           --- read ADC n             - example: adc 0             reads ADC0"
+	echo "  adc_raw <n>       --- read ADC n raw         - example: adcraw 0          reads ADC0 raw"
 	echo ""
 	echo "  mux_addr <n>      --- mux pin n register address, n=0-141"
 	echo "  mux_peek_pin <n>  --- mux pin n register value,   n=0-141"
@@ -385,5 +447,5 @@ function rbhelp()
 	echo ""
 	echo "  date_pt            --- display date/time in U.S. Pacific timezone "
 	echo ""
-	echo " update_flash        --- update firmware on internal flash - all existing files on flash are erased!"
+	echo " update_flash        --- update firmware on /dev/mmcblk1 - all existing files are erased!"
 }
